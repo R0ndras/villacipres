@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Villa Romana de Los Cipreses – Jumilla · Realidad Aumentada</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap');
+
+:root {
+  --gold: #c9a84c;
+  --gold-light: #e8c97a;
+  --terracotta: #b84c2c;
+  --sand: #e8d9b0;
+  --sand-dark: #c4a96a;
+  --stone: #8a7a60;
+  --deep: #1a1208;
+  --ochre: #9e6b2a;
+  --fresco-blue: #4a7a9e;
+  --fresco-green: #3a6b3a;
+  --mosaico: #7a3a1a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0d0a04;
+  font-family: 'Cormorant Garamond', serif;
+  color: var(--sand);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* ══════════════ ESCENA AR ══════════════ */
+#ar-viewport {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: radial-gradient(ellipse at center top, #2a4a6e 0%, #1a2a40 40%, #0d0a04 100%);
+}
+
+/* Cielo */
+.sky {
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 55%;
+  background: linear-gradient(180deg,
+    #1a3a5c 0%,
+    #2a5a8a 30%,
+    #4a7aaa 60%,
+    #c8a060 85%,
+    #e8c070 100%
+  );
+  overflow: hidden;
+}
+
+.sun {
+  position: absolute;
+  top: 20%;
+  right: 20%;
+  width: 80px; height: 80px;
+  background: radial-gradient(circle, #fff8d0 0%, #f0c040 40%, #e09020 70%, transparent 100%);
+  border-radius: 50%;
+  box-shadow: 0 0 60px 30px rgba(240,192,64,0.4), 0 0 120px 60px rgba(240,192,64,0.15);
+  animation: sunPulse 4s ease-in-out infinite;
+}
+
+@keyframes sunPulse {
+  0%,100% { box-shadow: 0 0 60px 30px rgba(240,192,64,0.4), 0 0 120px 60px rgba(240,192,64,0.15); }
+  50% { box-shadow: 0 0 80px 40px rgba(240,192,64,0.5), 0 0 150px 80px rgba(240,192,64,0.2); }
+}
+
+/* Nubes */
+.cloud {
+  position: absolute;
+  background: rgba(255,255,255,0.12);
+  border-radius: 50px;
+  filter: blur(8px);
+}
+.cloud-1 { top: 15%; left: -5%; width: 200px; height: 40px; animation: cloudDrift 30s linear infinite; }
+.cloud-2 { top: 25%; left: 30%; width: 150px; height: 30px; animation: cloudDrift 45s linear infinite 5s; }
+.cloud-3 { top: 10%; right: -10%; width: 250px; height: 45px; animation: cloudDrift2 35s linear infinite 10s; }
+@keyframes cloudDrift { from { transform: translateX(0); } to { transform: translateX(110vw); } }
+@keyframes cloudDrift2 { from { transform: translateX(0); } to { transform: translateX(-110vw); } }
+
+/* Terreno */
+.terrain {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, #b8a070 0%, #a0885a 30%, #7a6040 100%);
+}
+
+/* Tierra de Jumilla */
+.ground-detail {
+  position: absolute;
+  bottom: 0; left: 0; right: 0; height: 18%;
+  background: linear-gradient(180deg, #8a6840 0%, #604830 100%);
+  border-radius: 60% 60% 0 0 / 30% 30% 0 0;
+}
+
+/* ══════════════ VILLA PRINCIPAL ══════════════ */
+.villa-container {
+  position: absolute;
+  bottom: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 85%;
+  max-width: 900px;
+  perspective: 1200px;
+  animation: villaReveal 2s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes villaReveal {
+  0% { opacity: 0; transform: translateX(-50%) translateY(40px) scale(0.95); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+/* Efecto holograma AR */
+.villa-hologram {
+  position: relative;
+  filter: drop-shadow(0 0 20px rgba(100,200,255,0.3)) drop-shadow(0 0 40px rgba(100,200,255,0.1));
+  animation: holoFlicker 8s ease-in-out infinite;
+}
+
+@keyframes holoFlicker {
+  0%,90%,100% { filter: drop-shadow(0 0 20px rgba(100,200,255,0.3)) drop-shadow(0 0 40px rgba(100,200,255,0.1)); }
+  92% { filter: drop-shadow(0 0 25px rgba(100,200,255,0.5)) drop-shadow(0 0 50px rgba(100,200,255,0.2)); opacity: 0.9; }
+  94% { filter: drop-shadow(0 0 20px rgba(100,200,255,0.3)); opacity: 1; }
+}
+
+/* SVG Villa isométrica */
+.villa-svg-wrapper svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* ══════════════ LÍNEAS AR (HUD) ══════════════ */
+#ar-hud {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.ar-corner {
+  position: absolute;
+  width: 50px; height: 50px;
+  border-color: rgba(100,200,255,0.7);
+  border-style: solid;
+  border-width: 0;
+}
+.ar-corner.tl { top: 20px; left: 20px; border-top-width: 3px; border-left-width: 3px; }
+.ar-corner.tr { top: 20px; right: 20px; border-top-width: 3px; border-right-width: 3px; }
+.ar-corner.bl { bottom: 20px; left: 20px; border-bottom-width: 3px; border-left-width: 3px; }
+.ar-corner.br { bottom: 20px; right: 20px; border-bottom-width: 3px; border-right-width: 3px; }
+
+/* Grid AR */
+.ar-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(100,200,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100,200,255,0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* Líneas de scan */
+.scan-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(100,200,255,0.5) 30%, rgba(100,200,255,0.8) 50%, rgba(100,200,255,0.5) 70%, transparent 100%);
+  animation: scanMove 6s linear infinite;
+}
+@keyframes scanMove {
+  0% { top: -2px; opacity: 0; }
+  5% { opacity: 1; }
+  95% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* ══════════════ ETIQUETAS AR ══════════════ */
+.ar-label {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  z-index: 10;
+  animation: labelFloat 4s ease-in-out infinite;
+  pointer-events: all;
+}
+
+.ar-label:hover .label-card { background: rgba(0,30,60,0.95); border-color: rgba(100,200,255,0.9); transform: scale(1.05); }
+
+.ar-dot {
+  width: 14px; height: 14px;
+  background: rgba(100,200,255,0.9);
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 10px rgba(100,200,255,0.8);
+  flex-shrink: 0;
+  animation: dotPulse 2s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%,100% { box-shadow: 0 0 10px rgba(100,200,255,0.8); }
+  50% { box-shadow: 0 0 20px rgba(100,200,255,1), 0 0 30px rgba(100,200,255,0.4); }
+}
+
+.ar-line {
+  width: 60px; height: 1px;
+  background: linear-gradient(90deg, rgba(100,200,255,0.8), transparent);
+  flex-shrink: 0;
+}
+
+.ar-label.reverse .ar-line {
+  background: linear-gradient(270deg, rgba(100,200,255,0.8), transparent);
+}
+
+.label-card {
+  background: rgba(0,20,40,0.85);
+  border: 1px solid rgba(100,200,255,0.5);
+  border-radius: 4px;
+  padding: 6px 12px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  min-width: 140px;
+}
+
+.label-card h4 {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  color: rgba(100,200,255,0.9);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.label-card p {
+  font-size: 11px;
+  color: rgba(200,220,255,0.8);
+  font-style: italic;
+}
+
+@keyframes labelFloat {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* Posiciones de etiquetas */
+#lbl-peristilo { top: 28%; left: 5%; animation-delay: 0s; }
+#lbl-triclinium { top: 20%; right: 5%; animation-delay: 1s; }
+#lbl-balneum { top: 45%; left: 3%; animation-delay: 0.5s; }
+#lbl-bodega { top: 45%; right: 3%; animation-delay: 1.5s; }
+#lbl-atrium { bottom: 28%; left: 10%; animation-delay: 2s; }
+#lbl-almazara { bottom: 25%; right: 8%; animation-delay: 0.8s; }
+
+/* ══════════════ PANEL SUPERIOR ══════════════ */
+#top-header {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 20;
+  padding: 20px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.site-badge {
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(201,168,76,0.5);
+  border-radius: 4px;
+  padding: 12px 20px;
+  backdrop-filter: blur(12px);
+}
+
+.site-badge .era {
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  letter-spacing: 4px;
+  color: var(--gold);
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.site-badge h1 {
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--sand);
+  line-height: 1.2;
+}
+
+.site-badge h1 em {
+  color: var(--gold-light);
+  font-style: normal;
+}
+
+.site-badge .subtitle {
+  font-size: 11px;
+  color: var(--sand-dark);
+  margin-top: 3px;
+  font-style: italic;
+}
+
+.ar-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.ar-badge {
+  background: rgba(100,200,255,0.15);
+  border: 1px solid rgba(100,200,255,0.5);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: rgba(100,200,255,0.9);
+  text-transform: uppercase;
+  animation: badgePulse 3s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.coord-display {
+  font-size: 10px;
+  color: rgba(100,200,255,0.6);
+  letter-spacing: 1px;
+  font-family: monospace;
+}
+
+/* ══════════════ PANEL INFO ══════════════ */
+#info-panel {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  z-index: 20;
+  padding: 0 30px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 15px;
+}
+
+.timeline-bar {
+  flex: 1;
+  background: rgba(0,0,0,0.7);
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 4px;
+  padding: 14px 20px;
+  backdrop-filter: blur(12px);
+  max-width: 600px;
+}
+
+.timeline-bar h3 {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--gold);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.timeline-track {
+  position: relative;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  margin-bottom: 6px;
+}
+
+.timeline-fill {
+  position: absolute;
+  top: 0; left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--terracotta), var(--gold));
+  border-radius: 2px;
+  width: 0;
+  animation: timelineFill 3s ease-out 1s forwards;
+}
+
+@keyframes timelineFill { to { width: 100%; } }
+
+.timeline-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--sand-dark);
+  letter-spacing: 1px;
+}
+
+.phase-dots {
+  display: flex;
+  gap: 15px;
+  margin-top: 8px;
+}
+
+.phase-dot {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  color: rgba(200,180,140,0.8);
+}
+
+.phase-dot span {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.phase-dot.i span { background: #c8602a; }
+.phase-dot.ii span { background: #c9a84c; }
+.phase-dot.iii span { background: #4a7a9e; }
+
+.data-card {
+  background: rgba(0,0,0,0.7);
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 4px;
+  padding: 14px 18px;
+  backdrop-filter: blur(12px);
+  min-width: 180px;
+}
+
+.data-card h3 {
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--gold);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 10px;
+}
+
+.stat-row:last-child { border-bottom: none; }
+.stat-label { color: var(--stone); }
+.stat-value { color: var(--sand); font-weight: 600; }
+
+/* ══════════════ BOTONES DE ESCENA ══════════════ */
+#scene-controls {
+  position: absolute;
+  right: 30px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 20;
+}
+
+.scene-btn {
+  background: rgba(0,0,0,0.7);
+  border: 1px solid rgba(201,168,76,0.4);
+  border-radius: 4px;
+  color: var(--sand);
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  letter-spacing: 2px;
+  padding: 8px 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s;
+  text-align: center;
+  min-width: 90px;
+}
+
+.scene-btn:hover, .scene-btn.active {
+  background: rgba(201,168,76,0.2);
+  border-color: var(--gold);
+  color: var(--gold-light);
+  box-shadow: 0 0 15px rgba(201,168,76,0.2);
+}
+
+/* ══════════════ MODAL DETALLE ══════════════ */
+#detail-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+}
+
+#detail-modal.open { display: flex; }
+
+.modal-content {
+  background: linear-gradient(135deg, rgba(15,10,5,0.98), rgba(25,18,8,0.98));
+  border: 1px solid rgba(201,168,76,0.5);
+  border-radius: 8px;
+  padding: 40px;
+  max-width: 520px;
+  width: 90%;
+  position: relative;
+  box-shadow: 0 0 60px rgba(201,168,76,0.1);
+  animation: modalIn 0.4s cubic-bezier(.175,.885,.32,1.275);
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.85) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  background: none;
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 50%;
+  width: 30px; height: 30px;
+  color: var(--sand-dark);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.modal-close:hover { border-color: var(--gold); color: var(--gold); }
+
+.modal-era {
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  letter-spacing: 4px;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.modal-content h2 {
+  font-family: 'Cinzel', serif;
+  font-size: 24px;
+  color: var(--sand);
+  margin-bottom: 6px;
+}
+
+.modal-subtitle {
+  font-size: 13px;
+  color: var(--stone);
+  font-style: italic;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(201,168,76,0.2);
+}
+
+.modal-desc {
+  font-size: 14px;
+  line-height: 1.8;
+  color: rgba(220,200,160,0.9);
+  margin-bottom: 20px;
+}
+
+.modal-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  background: rgba(201,168,76,0.05);
+  border: 1px solid rgba(201,168,76,0.15);
+  border-radius: 4px;
+  padding: 15px;
+}
+
+.fact-item { font-size: 11px; }
+.fact-item .fact-label { color: var(--stone); margin-bottom: 2px; }
+.fact-item .fact-val { color: var(--sand); font-weight: 600; }
+
+/* ══════════════ PARTÍCULAS ══════════════ */
+.particle {
+  position: absolute;
+  width: 2px; height: 2px;
+  border-radius: 50%;
+  background: rgba(201,168,76,0.6);
+  pointer-events: none;
+  animation: particleRise linear infinite;
+}
+
+@keyframes particleRise {
+  0% { opacity: 0; transform: translateY(0) translateX(0); }
+  10% { opacity: 1; }
+  90% { opacity: 0.5; }
+  100% { opacity: 0; transform: translateY(-200px) translateX(var(--drift)); }
+}
+
+/* ══════════════ INTRO OVERLAY ══════════════ */
+#intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #0d0a04;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  text-align: center;
+  padding: 40px;
+  animation: introFadeOut 0.8s ease-out 3.5s forwards;
+}
+
+@keyframes introFadeOut {
+  to { opacity: 0; pointer-events: none; }
+}
+
+.intro-logo {
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: 6px;
+  color: var(--gold);
+  text-transform: uppercase;
+  animation: introFadeIn 1s ease-out 0.3s both;
+}
+
+.intro-title {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(28px, 5vw, 50px);
+  font-weight: 900;
+  color: var(--sand);
+  line-height: 1.1;
+  animation: introFadeIn 1s ease-out 0.7s both;
+}
+
+.intro-title em {
+  display: block;
+  color: var(--gold-light);
+  font-style: normal;
+  font-size: 0.7em;
+  letter-spacing: 8px;
+}
+
+.intro-sub {
+  font-size: 15px;
+  color: var(--stone);
+  font-style: italic;
+  animation: introFadeIn 1s ease-out 1.2s both;
+}
+
+.intro-loader {
+  width: 200px;
+  height: 2px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 1px;
+  overflow: hidden;
+  animation: introFadeIn 1s ease-out 1.5s both;
+}
+
+.intro-loader-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--terracotta), var(--gold));
+  width: 0;
+  animation: loaderFill 2s ease-out 1.8s forwards;
+  border-radius: 1px;
+}
+
+@keyframes introFadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes loaderFill { to { width: 100%; } }
+
+.intro-years {
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  color: rgba(201,168,76,0.5);
+  letter-spacing: 3px;
+  animation: introFadeIn 1s ease-out 1.8s both;
+}
+
+/* ══════════════ VILLA 2D DETALLADA ══════════════ */
+.villa-drawing {
+  width: 100%;
+  max-height: 60vh;
+  display: block;
+}
+
+/* Cipreses */
+.cypress-tree {
+  position: absolute;
+  bottom: 16%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: treeWave 5s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+.cypress-tree:nth-child(2) { animation-delay: 0.5s; }
+.cypress-tree:nth-child(3) { animation-delay: 1s; }
+.cypress-tree:nth-child(4) { animation-delay: 1.5s; }
+.cypress-tree:nth-child(5) { animation-delay: 0.3s; }
+
+@keyframes treeWave {
+  0%,100% { transform: rotate(-1deg); }
+  50% { transform: rotate(1deg); }
+}
+
+.cypress-body {
+  width: 20px;
+  background: linear-gradient(180deg, #1a4a1a 0%, #2a6a2a 40%, #1a4a1a 100%);
+  border-radius: 10px 10px 4px 4px;
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  box-shadow: inset -3px 0 6px rgba(0,0,0,0.4);
+}
+
+.cypress-trunk {
+  width: 5px;
+  background: #5a4020;
+  border-radius: 0 0 3px 3px;
+}
+
+</style>
+</head>
+<body>
+
+<!-- INTRO -->
+<div id="intro-overlay">
+  <div class="intro-logo">⬥ Reconstrucción Virtual ⬥ Murcia, Hispania</div>
+  <div class="intro-title">
+    Villa Romana de
+    <em>Los Cipreses</em>
+  </div>
+  <div class="intro-sub">Jumilla · Siglos I–V d.C.</div>
+  <div class="intro-years">Fundus Agropecuario · Hispania Citerior Tarraconensis</div>
+  <div class="intro-loader"><div class="intro-loader-fill"></div></div>
+</div>
+
+<!-- ESCENA PRINCIPAL -->
+<div id="ar-viewport">
+
+  <!-- Cielo y ambiente -->
+  <div class="sky">
+    <div class="sun"></div>
+    <div class="cloud cloud-1"></div>
+    <div class="cloud cloud-2"></div>
+    <div class="cloud cloud-3"></div>
+  </div>
+
+  <!-- Terreno -->
+  <div class="terrain"></div>
+  <div class="ground-detail"></div>
+
+  <!-- Cipreses decorativos -->
+  <div class="cypress-tree" style="left:6%;">
+    <div class="cypress-body" style="height:90px"></div>
+    <div class="cypress-trunk" style="height:20px"></div>
+  </div>
+  <div class="cypress-tree" style="left:10%;">
+    <div class="cypress-body" style="height:70px"></div>
+    <div class="cypress-trunk" style="height:15px"></div>
+  </div>
+  <div class="cypress-tree" style="right:8%;">
+    <div class="cypress-body" style="height:100px"></div>
+    <div class="cypress-trunk" style="height:22px"></div>
+  </div>
+  <div class="cypress-tree" style="right:13%;">
+    <div class="cypress-body" style="height:75px"></div>
+    <div class="cypress-trunk" style="height:16px"></div>
+  </div>
+
+  <!-- HUD AR -->
+  <div id="ar-hud">
+    <div class="ar-grid"></div>
+    <div class="scan-line"></div>
+    <div class="ar-corner tl"></div>
+    <div class="ar-corner tr"></div>
+    <div class="ar-corner bl"></div>
+    <div class="ar-corner br"></div>
+  </div>
+
+  <!-- VILLA RECONSTRUIDA -->
+  <div class="villa-container">
+    <div class="villa-hologram">
+      <div class="villa-svg-wrapper">
+        <!-- Villa SVG ilustrada - perspectiva isométrica estilizada -->
+        <svg viewBox="0 0 900 520" xmlns="http://www.w3.org/2000/svg" class="villa-drawing">
+          <defs>
+            <!-- Gradientes de materiales -->
+            <linearGradient id="wallFront" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" style="stop-color:#e8d4a0"/>
+              <stop offset="100%" style="stop-color:#c4a860"/>
+            </linearGradient>
+            <linearGradient id="wallSide" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#a8883c"/>
+              <stop offset="100%" style="stop-color:#8a6c28"/>
+            </linearGradient>
+            <linearGradient id="roofTile" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#c84a2a"/>
+              <stop offset="100%" style="stop-color:#a03818"/>
+            </linearGradient>
+            <linearGradient id="roofTileB" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#9e3820"/>
+              <stop offset="100%" style="stop-color:#7a2810"/>
+            </linearGradient>
+            <linearGradient id="columnGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#f0e0b0"/>
+              <stop offset="50%" style="stop-color:#fffaee"/>
+              <stop offset="100%" style="stop-color:#d4c090"/>
+            </linearGradient>
+            <linearGradient id="mosaicGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#3a5a8a"/>
+              <stop offset="50%" style="stop-color:#c9a84c"/>
+              <stop offset="100%" style="stop-color:#8a3a1a"/>
+            </linearGradient>
+            <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" style="stop-color:#2a5a8a;stop-opacity:0"/>
+              <stop offset="100%" style="stop-color:#b89060;stop-opacity:0.3"/>
+            </linearGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+            <filter id="arGlow">
+              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+            <!-- Patrón mosaico -->
+            <pattern id="mosaicPattern" x="0" y="0" width="12" height="12" patternUnits="userSpaceOnUse">
+              <rect width="12" height="12" fill="#2a4a6a"/>
+              <rect x="1" y="1" width="4" height="4" fill="#c9a84c" opacity="0.8"/>
+              <rect x="7" y="1" width="4" height="4" fill="#8a3a1a" opacity="0.9"/>
+              <rect x="1" y="7" width="4" height="4" fill="#4a7a2a" opacity="0.8"/>
+              <rect x="7" y="7" width="4" height="4" fill="#c9a84c" opacity="0.7"/>
+            </pattern>
+            <!-- Patrón teja romana -->
+            <pattern id="tejasPattern" x="0" y="0" width="20" height="10" patternUnits="userSpaceOnUse">
+              <rect width="20" height="10" fill="#c84a2a"/>
+              <rect x="0" y="0" width="10" height="5" fill="#b03820" rx="2"/>
+              <rect x="10" y="5" width="10" height="5" fill="#b03820" rx="2"/>
+              <line x1="10" y1="0" x2="10" y2="10" stroke="#a02a18" stroke-width="0.5"/>
+            </pattern>
+          </defs>
+
+          <!-- ═══ SOMBRA DE LA VILLA ═══ -->
+          <ellipse cx="450" cy="500" rx="380" ry="30" fill="rgba(0,0,0,0.25)"/>
+
+          <!-- ═══ PAVIMENTO EXTERIOR ═══ -->
+          <ellipse cx="450" cy="490" rx="380" ry="25" fill="#9a7840" opacity="0.6"/>
+          <!-- Piedras del camino -->
+          <rect x="360" y="475" width="180" height="25" fill="#8a6830" rx="3"/>
+          <line x1="390" y1="475" x2="390" y2="500" stroke="#7a5828" stroke-width="1"/>
+          <line x1="420" y1="475" x2="420" y2="500" stroke="#7a5828" stroke-width="1"/>
+          <line x1="450" y1="475" x2="450" y2="500" stroke="#7a5828" stroke-width="1"/>
+          <line x1="480" y1="475" x2="480" y2="500" stroke="#7a5828" stroke-width="1"/>
+          <line x1="510" y1="475" x2="510" y2="500" stroke="#7a5828" stroke-width="1"/>
+
+          <!-- ═══ ALA RUSTICA (izquierda) ═══ -->
+          <!-- Bodega/Torcularium -->
+          <rect x="30" y="240" width="180" height="180" fill="url(#wallFront)" rx="2"/>
+          <rect x="30" y="240" width="180" height="180" fill="rgba(0,0,0,0.1)" rx="2"/>
+          <!-- Ventanas bodega -->
+          <rect x="55" y="270" width="35" height="45" fill="#3a4a5a" rx="2"/>
+          <rect x="130" y="270" width="35" height="45" fill="#3a4a5a" rx="2"/>
+          <rect x="55" y="340" width="35" height="40" fill="#3a4a5a" rx="2"/>
+          <rect x="130" y="340" width="35" height="40" fill="#3a4a5a" rx="2"/>
+          <!-- Barriles de vino frente -->
+          <ellipse cx="85" cy="415" rx="18" ry="10" fill="#5a3818"/>
+          <rect x="67" y="385" width="36" height="30" fill="#6a4820" rx="4"/>
+          <ellipse cx="85" cy="385" rx="18" ry="10" fill="#7a5828"/>
+          <ellipse cx="140" cy="415" rx="18" ry="10" fill="#5a3818"/>
+          <rect x="122" y="385" width="36" height="30" fill="#6a4820" rx="4"/>
+          <ellipse cx="140" cy="385" rx="18" ry="10" fill="#7a5828"/>
+          <!-- Tejado rustica -->
+          <polygon points="20,240 210,240 220,200 10,200" fill="url(#tejasPattern)"/>
+          <polygon points="20,240 10,200 10,200" fill="#9e3820"/>
+          <!-- Chimenea almazara -->
+          <rect x="80" y="185" width="25" height="30" fill="#c8c0a0"/>
+          <ellipse cx="92" cy="185" rx="14" ry="5" fill="#a8a080"/>
+          <!-- Texto zona -->
+          <text x="120" y="260" text-anchor="middle" fill="rgba(201,168,76,0.7)" font-family="serif" font-size="9" font-style="italic">Pars Rustica</text>
+
+          <!-- ═══ ALMAZARA (lateral izq) ═══ -->
+          <rect x="30" y="140" width="120" height="100" fill="#d4c080" rx="2"/>
+          <rect x="30" y="140" width="120" height="100" fill="rgba(0,0,0,0.15)"/>
+          <!-- Prensa oliva -->
+          <rect x="55" y="165" width="70" height="50" fill="#8a6830" rx="3"/>
+          <rect x="65" y="155" width="12" height="70" fill="#6a4820" rx="2"/>
+          <rect x="85" y="155" width="12" height="70" fill="#6a4820" rx="2"/>
+          <rect x="55" y="160" width="70" height="8" fill="#5a3810" rx="2"/>
+          <rect x="55" y="200" width="70" height="8" fill="#5a3810" rx="2"/>
+          <!-- Tejado almazara -->
+          <polygon points="20,140 160,140 165,110 15,110" fill="url(#roofTile)"/>
+
+          <!-- ═══ BALNEUM (baños, izq frente) ═══ -->
+          <rect x="30" y="310" width="100" height="90" fill="#d8c8a0"/>
+          <!-- Arco baños -->
+          <path d="M30,310 Q80,280 130,310" fill="rgba(200,160,80,0.5)" stroke="#b09040" stroke-width="2"/>
+          <!-- Ventanas vapor -->
+          <rect x="45" y="325" width="25" height="30" fill="rgba(150,200,220,0.4)" rx="3"/>
+          <rect x="90" y="325" width="25" height="30" fill="rgba(150,200,220,0.4)" rx="3"/>
+          <!-- Vapor -->
+          <path d="M55,325 Q58,315 55,305" stroke="rgba(200,220,255,0.5)" stroke-width="2" fill="none"/>
+          <path d="M103,325 Q107,312 103,300" stroke="rgba(200,220,255,0.5)" stroke-width="2" fill="none"/>
+          <!-- Tejado baños -->
+          <polygon points="20,310 140,310 145,280 15,280" fill="url(#roofTile)"/>
+
+          <!-- ═══ CUERPO CENTRAL - PARS URBANA ═══ -->
+          <!-- Muro trasero -->
+          <rect x="210" y="150" width="480" height="290" fill="url(#wallFront)" rx="3"/>
+          <rect x="210" y="150" width="480" height="290" fill="rgba(0,0,0,0.08)"/>
+
+          <!-- ═══ PERISTILO (patio central con columnas) ═══ -->
+          <!-- Suelo mosaico del peristilo -->
+          <rect x="285" y="200" width="330" height="220" fill="url(#mosaicPattern)" rx="4"/>
+          <!-- Borde mosaico geométrico -->
+          <rect x="285" y="200" width="330" height="220" fill="none" stroke="#c9a84c" stroke-width="3" rx="4"/>
+          <rect x="291" y="206" width="318" height="208" fill="none" stroke="#8a3a1a" stroke-width="1.5" rx="3"/>
+
+          <!-- Jardín central del peristilo -->
+          <ellipse cx="450" cy="310" rx="90" ry="70" fill="#3a6a2a"/>
+          <ellipse cx="450" cy="310" rx="90" ry="70" fill="rgba(80,160,60,0.3)"/>
+          <!-- Estanque central -->
+          <ellipse cx="450" cy="310" rx="50" ry="35" fill="#2a5a8a"/>
+          <ellipse cx="450" cy="310" rx="50" ry="35" fill="rgba(100,180,220,0.4)"/>
+          <!-- Reflejo agua -->
+          <ellipse cx="440" cy="305" rx="20" ry="12" fill="rgba(255,255,255,0.15)"/>
+          <!-- Plantas peristilo -->
+          <circle cx="370" cy="280" r="15" fill="#2a5a1a"/>
+          <circle cx="530" cy="280" r="15" fill="#2a5a1a"/>
+          <circle cx="370" cy="340" r="12" fill="#1a4a0a"/>
+          <circle cx="530" cy="340" r="12" fill="#1a4a0a"/>
+          <!-- Arbusto ornamental -->
+          <circle cx="380" cy="350" r="8" fill="#3a7a1a"/>
+          <circle cx="520" cy="350" r="8" fill="#3a7a1a"/>
+
+          <!-- Columnas del peristilo - fila delantera -->
+          <rect x="295" y="210" width="18" height="180" fill="url(#columnGrad)" rx="3"/>
+          <ellipse cx="304" cy="210" rx="11" ry="5" fill="#f0e8d0"/>
+          <ellipse cx="304" cy="390" rx="11" ry="5" fill="#d4c090"/>
+          <rect x="295" y="205" width="18" height="8" fill="#e8d8b0" rx="2"/>
+          <rect x="295" y="388" width="18" height="8" fill="#d4c080" rx="2"/>
+
+          <rect x="340" y="210" width="18" height="180" fill="url(#columnGrad)" rx="3"/>
+          <ellipse cx="349" cy="210" rx="11" ry="5" fill="#f0e8d0"/>
+          <ellipse cx="349" cy="390" rx="11" ry="5" fill="#d4c090"/>
+          <rect x="340" y="205" width="18" height="8" fill="#e8d8b0" rx="2"/>
+          <rect x="340" y="388" width="18" height="8" fill="#d4c080" rx="2"/>
+
+          <rect x="542" y="210" width="18" height="180" fill="url(#columnGrad)" rx="3"/>
+          <ellipse cx="551" cy="210" rx="11" ry="5" fill="#f0e8d0"/>
+          <ellipse cx="551" cy="390" rx="11" ry="5" fill="#d4c090"/>
+          <rect x="542" y="205" width="18" height="8" fill="#e8d8b0" rx="2"/>
+          <rect x="542" y="388" width="18" height="8" fill="#d4c080" rx="2"/>
+
+          <rect x="587" y="210" width="18" height="180" fill="url(#columnGrad)" rx="3"/>
+          <ellipse cx="596" cy="210" rx="11" ry="5" fill="#f0e8d0"/>
+          <ellipse cx="596" cy="390" rx="11" ry="5" fill="#d4c090"/>
+          <rect x="587" y="205" width="18" height="8" fill="#e8d8b0" rx="2"/>
+          <rect x="587" y="388" width="18" height="8" fill="#d4c080" rx="2"/>
+
+          <!-- Entablamento / arquitrabe peristilo -->
+          <rect x="285" y="200" width="330" height="18" fill="#e8d490" rx="2"/>
+          <rect x="285" y="390" width="330" height="15" fill="#d4c070" rx="2"/>
+
+          <!-- ═══ TABLINUM / TRICLINIUM ═══ -->
+          <rect x="390" y="155" width="120" height="60" fill="#f0e0a0"/>
+          <!-- Frescos en paredes -->
+          <rect x="400" y="162" width="30" height="40" fill="#4a7a9e" opacity="0.7" rx="2"/>
+          <rect x="460" y="162" width="30" height="40" fill="#7a3a1a" opacity="0.7" rx="2"/>
+          <!-- Decoración fresco izq -->
+          <ellipse cx="415" cy="178" rx="8" ry="12" fill="#c84a2a" opacity="0.6"/>
+          <!-- Decoración fresco der -->
+          <path d="M468,175 Q475,165 482,175 Q480,185 475,188 Q470,185 468,175" fill="#3a6a3a" opacity="0.7"/>
+          <!-- Texto triclinium -->
+          <text x="450" y="178" text-anchor="middle" fill="rgba(201,168,76,0.6)" font-family="serif" font-size="7" font-style="italic">Triclinium</text>
+          <!-- Tejado tablinum -->
+          <polygon points="385,155 515,155 510,130 390,130" fill="url(#tejasPattern)"/>
+          <polygon points="385,155 390,130 340,130 330,155" fill="url(#roofTileB)"/>
+          <polygon points="515,155 510,130 560,130 570,155" fill="url(#roofTileB)"/>
+
+          <!-- ═══ ATRIUM (entrada) ═══ -->
+          <rect x="380" y="385" width="140" height="60" fill="#d8c890"/>
+          <!-- Puerta principal -->
+          <rect x="430" y="395" width="40" height="55" fill="#5a3818" rx="2"/>
+          <path d="M430,400 Q450,385 470,400" fill="#7a5030" stroke="#5a3818" stroke-width="1.5"/>
+          <!-- Herrajes puerta -->
+          <circle cx="460" cy="425" r="4" fill="#c9a84c"/>
+          <circle cx="440" cy="425" r="4" fill="#c9a84c"/>
+          <!-- Peldaños entrada -->
+          <rect x="415" y="440" width="70" height="8" fill="#b09050" rx="1"/>
+          <rect x="420" y="448" width="60" height="8" fill="#a08040" rx="1"/>
+          <rect x="425" y="456" width="50" height="8" fill="#907030" rx="1"/>
+          <!-- Columnas atrio -->
+          <rect x="383" y="390" width="12" height="55" fill="url(#columnGrad)" rx="2"/>
+          <rect x="505" y="390" width="12" height="55" fill="url(#columnGrad)" rx="2"/>
+          <!-- Impluvium -->
+          <ellipse cx="450" cy="408" rx="20" ry="10" fill="#2a5a8a" opacity="0.7"/>
+
+          <!-- ═══ ALA DERECHA - Cubicula ═══ -->
+          <rect x="690" y="200" width="160" height="230" fill="#e0d098" rx="2"/>
+          <!-- Ventanas cubículos -->
+          <rect x="705" y="220" width="28" height="35" fill="#2a3a4a" rx="2"/>
+          <rect x="745" y="220" width="28" height="35" fill="#2a3a4a" rx="2"/>
+          <rect x="785" y="220" width="28" height="35" fill="#2a3a4a" rx="2"/>
+          <rect x="705" y="285" width="28" height="35" fill="#2a3a4a" rx="2"/>
+          <rect x="745" y="285" width="28" height="35" fill="#2a3a4a" rx="2"/>
+          <rect x="785" y="285" width="28" height="35" fill="#2a3a4a" rx="2"/>
+          <rect x="705" y="350" width="28" height="35" fill="#2a3a4a" rx="2"/>
+          <rect x="745" y="350" width="28" height="35" fill="#2a3a4a" rx="2"/>
+          <rect x="785" y="350" width="28" height="35" fill="#2a3a4a" rx="2"/>
+          <!-- Texto cubicula -->
+          <text x="770" y="195" text-anchor="middle" fill="rgba(201,168,76,0.6)" font-family="serif" font-size="8" font-style="italic">Cubicula</text>
+          <!-- Tejado cubicula -->
+          <polygon points="685,200 855,200 865,165 675,165" fill="url(#tejasPattern)"/>
+
+          <!-- ═══ TEJADO PRINCIPAL PARS URBANA ═══ -->
+          <polygon points="200,150 690,150 700,110 190,110" fill="url(#tejasPattern)"/>
+          <polygon points="200,150 190,110 100,110 90,150" fill="url(#roofTileB)"/>
+          <!-- Cumbrera -->
+          <rect x="190" y="105" width="510" height="10" fill="#8a2810" rx="3"/>
+          <!-- Decoración frontón -->
+          <polygon points="420,105 450,80 480,105" fill="#e8d0a0"/>
+          <circle cx="450" cy="90" r="8" fill="none" stroke="#c9a84c" stroke-width="1.5"/>
+
+          <!-- ═══ MURALLA PERIMETRAL ═══ -->
+          <rect x="15" y="430" width="870" height="25" fill="#8a7040" rx="3"/>
+          <rect x="15" y="425" width="870" height="10" fill="#a08050" rx="2"/>
+          <!-- Almenas -->
+          <rect x="15" y="415" width="20" height="12" fill="#9a7a48" rx="2"/>
+          <rect x="50" y="415" width="20" height="12" fill="#9a7a48" rx="2"/>
+          <rect x="85" y="415" width="20" height="12" fill="#9a7a48" rx="2"/>
+          <rect x="820" y="415" width="20" height="12" fill="#9a7a48" rx="2"/>
+          <rect x="855" y="415" width="20" height="12" fill="#9a7a48" rx="2"/>
+
+          <!-- ═══ ELEMENTOS AR SUPERPUESTOS ═══ -->
+          <!-- Contorno AR holográfico del edificio -->
+          <rect x="20" y="100" width="860" height="360" fill="none"
+            stroke="rgba(100,200,255,0.3)" stroke-width="2"
+            stroke-dasharray="8,4" rx="4"
+            filter="url(#arGlow)"/>
+
+          <!-- Líneas AR de escaneado estructura -->
+          <line x1="20" y1="200" x2="880" y2="200" stroke="rgba(100,200,255,0.12)" stroke-width="1"/>
+          <line x1="20" y1="300" x2="880" y2="300" stroke="rgba(100,200,255,0.12)" stroke-width="1"/>
+          <line x1="20" y1="400" x2="880" y2="400" stroke="rgba(100,200,255,0.12)" stroke-width="1"/>
+
+          <!-- Puntos de medición AR -->
+          <circle cx="210" cy="150" r="5" fill="rgba(100,200,255,0.8)" filter="url(#arGlow)"/>
+          <circle cx="690" cy="150" r="5" fill="rgba(100,200,255,0.8)" filter="url(#arGlow)"/>
+          <circle cx="285" cy="200" r="5" fill="rgba(100,200,255,0.6)" filter="url(#arGlow)"/>
+          <circle cx="615" cy="200" r="5" fill="rgba(100,200,255,0.6)" filter="url(#arGlow)"/>
+
+          <!-- Cota de altura AR -->
+          <line x1="870" y1="100" x2="870" y2="440" stroke="rgba(100,200,255,0.5)" stroke-width="1.5" stroke-dasharray="4,3" filter="url(#arGlow)"/>
+          <line x1="860" y1="100" x2="880" y2="100" stroke="rgba(100,200,255,0.7)" stroke-width="1.5"/>
+          <line x1="860" y1="440" x2="880" y2="440" stroke="rgba(100,200,255,0.7)" stroke-width="1.5"/>
+          <text x="885" y="275" fill="rgba(100,200,255,0.8)" font-size="9" font-family="monospace">8.4 m</text>
+
+          <!-- Medida anchura AR -->
+          <line x1="20" y1="460" x2="880" y2="460" stroke="rgba(100,200,255,0.4)" stroke-width="1.5" stroke-dasharray="4,3" filter="url(#arGlow)"/>
+          <line x1="20" y1="450" x2="20" y2="470" stroke="rgba(100,200,255,0.7)" stroke-width="1.5"/>
+          <line x1="880" y1="450" x2="880" y2="470" stroke="rgba(100,200,255,0.7)" stroke-width="1.5"/>
+          <text x="430" y="475" text-anchor="middle" fill="rgba(100,200,255,0.8)" font-size="9" font-family="monospace">~4200 m²</text>
+
+          <!-- Nota arqueológica mosaico -->
+          <text x="450" y="312" text-anchor="middle" fill="rgba(255,240,200,0.5)" font-size="7" font-family="serif" font-style="italic">Mosaico Peristilo s.III</text>
+
+          <!-- Etiquetas internas AR -->
+          <g filter="url(#arGlow)">
+            <text x="120" y="328" text-anchor="middle" fill="rgba(100,220,255,0.7)" font-size="8" font-family="monospace">BODEGA</text>
+            <text x="770" y="315" text-anchor="middle" fill="rgba(100,220,255,0.7)" font-size="8" font-family="monospace">CUBICULA</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Etiquetas AR flotantes -->
+  <div class="ar-label" id="lbl-peristilo" onclick="openModal('peristilo')">
+    <div class="ar-dot"></div>
+    <div class="ar-line"></div>
+    <div class="label-card">
+      <h4>Peristilo</h4>
+      <p>Patio con columnas · s.III</p>
+    </div>
+  </div>
+
+  <div class="ar-label reverse" id="lbl-triclinium" onclick="openModal('triclinium')">
+    <div class="label-card">
+      <h4>Triclinium</h4>
+      <p>Sala de banquetes</p>
+    </div>
+    <div class="ar-line" style="background: linear-gradient(270deg, rgba(100,200,255,0.8), transparent)"></div>
+    <div class="ar-dot"></div>
+  </div>
+
+  <div class="ar-label" id="lbl-balneum" onclick="openModal('balneum')">
+    <div class="ar-dot"></div>
+    <div class="ar-line"></div>
+    <div class="label-card">
+      <h4>Balneum</h4>
+      <p>Baños termales</p>
+    </div>
+  </div>
+
+  <div class="ar-label reverse" id="lbl-bodega" onclick="openModal('bodega')">
+    <div class="label-card">
+      <h4>Torcularium</h4>
+      <p>Bodega · producción vino</p>
+    </div>
+    <div class="ar-line" style="background: linear-gradient(270deg, rgba(100,200,255,0.8), transparent)"></div>
+    <div class="ar-dot"></div>
+  </div>
+
+  <div class="ar-label" id="lbl-atrium" onclick="openModal('atrium')">
+    <div class="ar-dot"></div>
+    <div class="ar-line"></div>
+    <div class="label-card">
+      <h4>Atrium</h4>
+      <p>Entrada principal · impluvium</p>
+    </div>
+  </div>
+
+  <div class="ar-label reverse" id="lbl-almazara" onclick="openModal('almazara')">
+    <div class="label-card">
+      <h4>Almazara</h4>
+      <p>Prensa de aceite de oliva</p>
+    </div>
+    <div class="ar-line" style="background: linear-gradient(270deg, rgba(100,200,255,0.8), transparent)"></div>
+    <div class="ar-dot"></div>
+  </div>
+
+  <!-- Header -->
+  <div id="top-header">
+    <div class="site-badge">
+      <span class="era">⬥ Hispania Citerior · Reconstrucción Virtual</span>
+      <h1>Villa Romana de<br><em>Los Cipreses</em></h1>
+      <div class="subtitle">Jumilla, Murcia · Siglos I – V d.C.</div>
+    </div>
+    <div class="ar-status">
+      <div class="ar-badge">⬤ AR Activo</div>
+      <div class="coord-display">38°28′N · 1°19′O</div>
+      <div class="coord-display">Alt. 560 m</div>
+    </div>
+  </div>
+
+  <!-- Controles escena -->
+  <div id="scene-controls">
+    <button class="scene-btn active" onclick="setScene('day')">Amanecer</button>
+    <button class="scene-btn" onclick="setScene('noon')">Mediodía</button>
+    <button class="scene-btn" onclick="setScene('dusk')">Crepúsculo</button>
+    <button class="scene-btn" onclick="setScene('night')">Nocturna</button>
+  </div>
+
+  <!-- Panel inferior -->
+  <div id="info-panel">
+    <div class="timeline-bar">
+      <h3>Cronología · Fases Constructivas</h3>
+      <div class="timeline-track">
+        <div class="timeline-fill"></div>
+      </div>
+      <div class="timeline-labels">
+        <span>s. I d.C.</span>
+        <span>s. II</span>
+        <span>s. III</span>
+        <span>s. IV</span>
+        <span>s. V d.C.</span>
+      </div>
+      <div class="phase-dots">
+        <div class="phase-dot i"><span></span>Fase I · Fundación</div>
+        <div class="phase-dot ii"><span></span>Fase II · Expansión</div>
+        <div class="phase-dot iii"><span></span>Fase III · Tardoantigüedad</div>
+      </div>
+    </div>
+    <div class="data-card">
+      <h3>Datos Arqueológicos</h3>
+      <div class="stat-row">
+        <span class="stat-label">Superficie</span>
+        <span class="stat-value">~4.200 m²</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">1ª excavación</span>
+        <span class="stat-value">1961 – J. Molina</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Mosaicos</span>
+        <span class="stat-value">Geométricos s.III</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Producción</span>
+        <span class="stat-value">Vino · Aceite</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Tesoro</span>
+        <span class="stat-value">52 monedas s.IV</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- fin ar-viewport -->
+
+<!-- MODAL DETALLE -->
+<div id="detail-modal">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-era" id="modal-era"></div>
+    <h2 id="modal-title"></h2>
+    <div class="modal-subtitle" id="modal-subtitle"></div>
+    <div class="modal-desc" id="modal-desc"></div>
+    <div class="modal-facts" id="modal-facts"></div>
+  </div>
+</div>
+
+<script>
+// ═══ DATOS DE LOS ESPACIOS ═══
+const spaces = {
+  peristilo: {
+    era: '⬥ Siglo III d.C. · Pars Urbana',
+    title: 'Peristilo',
+    subtitle: 'Patio columnado con jardín y estanque central',
+    desc: 'El corazón de la villa era su espléndido peristilo, un patio descubierto rodeado por una galería de columnas de mármol blanco. En el centro, un jardín cuidadosamente diseñado con plantas aromáticas rodeaba un estanque (impluvium exterior), cuya agua reflejaba las columnas. El suelo estaba cubierto por elaborados mosaicos geométricos con teselas de color rojo bermellón, nudos de Salomón y peltas, conservados hoy en el Museo Arqueológico Jerónimo Molina de Jumilla.',
+    facts: [
+      { label: 'Material columnas', val: 'Caliza local' },
+      { label: 'Mosaico', val: 'Geométrico · Rojo bermellón' },
+      { label: 'Estilo', val: 'Italianizante' },
+      { label: 'Cronología', val: 'Siglo II-III d.C.' },
+    ]
+  },
+  triclinium: {
+    era: '⬥ Pars Urbana · Zona Señorial',
+    title: 'Triclinium',
+    subtitle: 'Gran sala de banquetes y representación',
+    desc: 'El triclinium era la sala donde el dominus (propietario) celebraba sus banquetes y recibía visitas. Sus paredes estaban decoradas con frescos de colores vivos: rojos pompeyanos, azules de ultramar y verdes vegetales representando jardines, escenas mitológicas y motivos geométricos. En su interior se disponían los tres lechos (triclinia) donde los comensales recostados compartían suntuosas comidas. Era el escaparate del poder y riqueza del propietario.',
+    facts: [
+      { label: 'Decoración', val: 'Frescos pompeyanos' },
+      { label: 'Capacidad', val: '9-12 comensales' },
+      { label: 'Pavimento', val: 'Opus tessellatum' },
+      { label: 'Función', val: 'Representación social' },
+    ]
+  },
+  balneum: {
+    era: '⬥ Instalación Termal · Lujo Rural',
+    title: 'Balneum',
+    subtitle: 'Complejo de baños termales privados',
+    desc: 'Los balnea de Los Cipreses constituían un lujo excepcional para una villa rural hispana. El complejo incluía el frigidarium (sala fría), tepidarium (sala templada) y caldarium (sala caliente), todo ello alimentado por un sistema de hipocausto donde el aire caliente circulaba bajo el suelo elevado. El balneum no era solo higiene, sino ritual social: los esclavos atendían a los bañistas y se aplicaban aceites perfumados antes de la strigilis.',
+    facts: [
+      { label: 'Sistema', val: 'Hipocausto' },
+      { label: 'Salas', val: 'Frigi · Tepi · Caldarium' },
+      { label: 'Combustible', val: 'Leña de encina' },
+      { label: 'Cronología', val: 'Siglo II d.C.' },
+    ]
+  },
+  bodega: {
+    era: '⬥ Pars Fructuaria · Producción',
+    title: 'Torcularium',
+    subtitle: 'Zona de producción y almacenamiento de vino',
+    desc: 'La pars fructuaria (zona productiva) de Los Cipreses revela que era el corazón de un fundus dedicado a la explotación agropecuaria. Se han documentado instalaciones para la elaboración de vino con lagares de prensado (torcularium), grandes dolia enterradas para la fermentación y cubetas de decantación. La vid cultivada en las tierras del altiplano murciano producía un vino que se comercializaba hacia Carthago Nova (Cartagena). Se encontró un tesoro de 52 monedas del siglo IV d.C.',
+    facts: [
+      { label: 'Producción', val: 'Vino · Aceite' },
+      { label: 'Almacenamiento', val: 'Dolia · Ánforas' },
+      { label: 'Mercado', val: 'Carthago Nova' },
+      { label: 'Hallazgo', val: '52 monedas s.IV' },
+    ]
+  },
+  atrium: {
+    era: '⬥ Entrada Principal · Vestíbulo',
+    title: 'Atrium',
+    subtitle: 'Vestíbulo de entrada con impluvium',
+    desc: 'El atrium era el primer espacio que el visitante encontraba al entrar en la villa. Una puerta de madera de dos hojas reforzada con herrajes de bronce daba paso a este vestíbulo cubierto parcialmente, con una abertura en el techo (compluvium) sobre un pequeño estanque (impluvium) que recogía el agua de lluvia. Las paredes estaban pintadas y el pavimento de losas de caliza marcaba la transición entre el exterior agreste y la refinada vida interior de la villa.',
+    facts: [
+      { label: 'Puerta', val: 'Madera · Herrajes bronce' },
+      { label: 'Elemento', val: 'Impluvium' },
+      { label: 'Acceso', val: 'Desde calzada romana' },
+      { label: 'Función', val: 'Recepción · Representación' },
+    ]
+  },
+  almazara: {
+    era: '⬥ Oleicultura · Siglo II d.C.',
+    title: 'Almazara',
+    subtitle: 'Molino y prensa para la producción de aceite de oliva',
+    desc: 'La almazara era la instalación para la producción de aceite de oliva, uno de los productos fundamentales de la Hispania romana. Los olivos cultivados en las laderas del altiplano jumillano eran molidos primero con un molino de piedra (mola olearia) y después prensados con una gran prensa de viga (prelum). El aceite resultante, tras decantar en cubetas escalonadas, se almacenaba en grandes dolia y se transportaba en ánforas Dressel hacia los mercados del Imperio.',
+    facts: [
+      { label: 'Tipo prensa', val: 'Prelum de viga' },
+      { label: 'Molino', val: 'Mola olearia' },
+      { label: 'Almacén', val: 'Dolia in terra' },
+      { label: 'Exportación', val: 'Ánforas Dressel' },
+    ]
+  }
+};
+
+// ═══ MODAL ═══
+function openModal(id) {
+  const s = spaces[id];
+  if (!s) return;
+  document.getElementById('modal-era').textContent = s.era;
+  document.getElementById('modal-title').textContent = s.title;
+  document.getElementById('modal-subtitle').textContent = s.subtitle;
+  document.getElementById('modal-desc').textContent = s.desc;
+  const factsHtml = s.facts.map(f =>
+    `<div class="fact-item"><div class="fact-label">${f.label}</div><div class="fact-val">${f.val}</div></div>`
+  ).join('');
+  document.getElementById('modal-facts').innerHTML = factsHtml;
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('detail-modal').classList.remove('open');
+}
+
+document.getElementById('detail-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ═══ ESCENAS DE LUZ ═══
+const scenes = {
+  day: {
+    sky: 'linear-gradient(180deg, #1a3a5c 0%, #2a5a8a 30%, #4a7aaa 60%, #c8a060 85%, #e8c070 100%)',
+    vp: 'radial-gradient(ellipse at center top, #2a4a6e 0%, #1a2a40 40%, #0d0a04 100%)',
+    terrain: 'linear-gradient(180deg, #b8a070 0%, #a0885a 30%, #7a6040 100%)',
+    label: '⬤ AR Activo'
+  },
+  noon: {
+    sky: 'linear-gradient(180deg, #1a4a7a 0%, #3a6aaa 25%, #6a9acc 60%, #d0d8e0 90%, #f0f0e0 100%)',
+    vp: 'radial-gradient(ellipse at center top, #3a5a7e 0%, #2a3a50 40%, #1a150a 100%)',
+    terrain: 'linear-gradient(180deg, #d0c090 0%, #b8a070 30%, #8a7050 100%)',
+    label: '⬤ AR Activo'
+  },
+  dusk: {
+    sky: 'linear-gradient(180deg, #2a1830 0%, #6a2820 30%, #d05020 60%, #e89040 80%, #f0c060 100%)',
+    vp: 'radial-gradient(ellipse at center top, #3a1828 0%, #201018 40%, #0a0608 100%)',
+    terrain: 'linear-gradient(180deg, #9a7050 0%, #7a5030 30%, #5a3818 100%)',
+    label: '⬤ AR Activo'
+  },
+  night: {
+    sky: 'linear-gradient(180deg, #050810 0%, #0a1020 30%, #101828 60%, #1a2030 100%)',
+    vp: 'radial-gradient(ellipse at center top, #0a1020 0%, #060810 40%, #020405 100%)',
+    terrain: 'linear-gradient(180deg, #3a3020 0%, #2a2010 30%, #1a1008 100%)',
+    label: '⬤ AR Activo'
+  }
+};
+
+function setScene(name) {
+  const s = scenes[name];
+  document.querySelector('.sky').style.background = s.sky;
+  document.getElementById('ar-viewport').style.background = s.vp;
+  document.querySelector('.terrain').style.background = s.terrain;
+  document.querySelectorAll('.scene-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+// ═══ PARTÍCULAS ═══
+function createParticles() {
+  const vp = document.getElementById('ar-viewport');
+  for (let i = 0; i < 12; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.cssText = `
+      left: ${Math.random() * 100}%;
+      bottom: ${15 + Math.random() * 30}%;
+      animation-duration: ${4 + Math.random() * 6}s;
+      animation-delay: ${Math.random() * 5}s;
+      --drift: ${(Math.random() - 0.5) * 40}px;
+      opacity: 0;
+      width: ${1 + Math.random() * 2}px;
+      height: ${1 + Math.random() * 2}px;
+    `;
+    vp.appendChild(p);
+  }
+}
+
+createParticles();
+
+// ═══ ANIMACIÓN INTRO ═══
+setTimeout(() => {
+  document.getElementById('intro-overlay').style.display = 'none';
+}, 4400);
+</script>
+</body>
+</html>
